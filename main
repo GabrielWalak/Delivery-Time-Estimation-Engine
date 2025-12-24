@@ -1,0 +1,53 @@
+import sys
+import os
+import matplotlib.pyplot as plt
+import joblib
+
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+
+from src.loader import get_data
+from src.processing import process_data
+from src.model import IsolationForestModel
+from src.prediction import train_and_evaluate
+
+if __name__ == "__main__":
+    print("=== CONTROL TOWER SYSTEM START ===")
+    
+    # 1. ETL
+    raw_data = get_data()
+    clean_df = process_data(raw_data)
+    
+    # 2. Anomaly Detection (Unsupervised)
+    df_with_anomalies = IsolationForestModel(clean_df)
+    
+    # 3. Time Prediction (Supervised - XGBoost)
+    final_df, model, r2, mae, feature_names = train_and_evaluate(df_with_anomalies)
+    
+    # 4. Final Report
+    print("\n=== FINAL REPORT ===")
+    print(f"Model Quality (R^2): {r2:.2%}")
+    print(f"Mean Error: {mae:.1f} days")
+    
+    print("\nSample Results (Actual vs Prediction):")
+    print(final_df[['delivery_time_days', 'predicted_days', 'prediction_error']].head(10))
+
+    final_df['absolute_error'] = abs(final_df['delivery_time_days'] - final_df['predicted_days'])
+    accuracy_proxy = (final_df['absolute_error'] < 3).mean()
+
+    print(f"\n=== ACCURACY COMPARISON ===")
+    print(f"Percentage of orders with error < 3 days: {accuracy_proxy:.1%}")
+    
+    # 5. Feature Importance Chart
+    plt.figure(figsize=(10, 6))
+    plt.barh(feature_names, model.feature_importances_)
+    plt.xlabel('Importance')
+    plt.title('Feature Importance')
+    plt.tight_layout()
+    plt.savefig('feature_importance.png')
+    print("\nSaved chart: feature_importance.png")
+    
+    # 6. Save model to file
+    os.makedirs('models', exist_ok=True)
+    joblib.dump(model, 'models/xgboost_model.pkl')
+    joblib.dump(feature_names, 'models/feature_names.pkl')
+    print("Saved model: models/xgboost_model.pkl")
