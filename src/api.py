@@ -1,4 +1,5 @@
 from typing import List
+from contextlib import asynccontextmanager
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException, status
@@ -108,10 +109,21 @@ class PredictionEngine:
         return warnings
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan - startup and shutdown events."""
+    # Startup
+    await startup()
+    yield
+    # Shutdown (if needed)
+    pass
+
+
 app = FastAPI(
     title="Delivery Time Estimation API",
     description="XGBoost-backed prediction service with Pydantic validation",
     version="1.0.0",
+    lifespan=lifespan  # Use new lifespan pattern
 )
 
 app.add_middleware(
@@ -124,9 +136,12 @@ app.add_middleware(
 engine = PredictionEngine()
 
 
-@app.on_event("startup")
-def boot_engine() -> None:
-    engine.train()
+async def startup():
+    """Initialize prediction engine on startup."""
+    try:
+        await engine.initialize()
+    except Exception as e:
+        print(f"Failed to initialize prediction engine: {e}")
 
 
 @app.get("/health")
