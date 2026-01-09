@@ -8,6 +8,8 @@ obj/
 # --- Python
 __pycache__/
 *.pyc
+.venv/
+.env
 *.pyo
 *.pyd
 .pytest_cache/

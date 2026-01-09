@@ -1,13 +1,25 @@
-import pytest
+from fastapi.testclient import TestClient
+from src.api import app
 
-def test_delivery_time_non_negative():
-    # Prosty test logiczny: czas nie może być ujemny
-    prediction = 15.5 # Tu docelowo odpalisz funkcję z api.py
-    assert prediction >= 0
+client = TestClient(app)
 
-def test_distance_impact():
-    # Dłuższy dystans powinien (zazwyczaj) oznaczać dłuższy czas
-    # To jest test Twojej "inteligencji systemowej"
-    dist_short = 2.0
-    dist_long = 10.0
-    assert dist_long > dist_short
+def test_health_endpoint():
+    # check health endpoint
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "operational"
+
+def test_prediction_logic():
+    # seinfg the prediction endpoint with sample data
+    payload = {
+        "distance_km": 10.0,
+        "weight_g": 500,
+        "purchase_month": 1,
+        "order_hour": 12,
+        "vehicle_type": "car"
+    }
+    response = client.post("/predict", json=payload)
+    assert response.status_code == 200
+    # checing response structure
+    assert "estimated_delivery_minutes" in response.json()
+    assert response.json()["estimated_delivery_minutes"] > 0
