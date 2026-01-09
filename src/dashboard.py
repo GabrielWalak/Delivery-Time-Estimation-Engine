@@ -40,6 +40,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def call_prediction_api(payload):
+    """Call FastAPI prediction endpoint with httpx library."""
     try:
         response = httpx.post(PREDICTION_ENDPOINT, json=payload, timeout=PREDICTION_TIMEOUT)
         response.raise_for_status()

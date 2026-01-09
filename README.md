@@ -21,7 +21,7 @@ Is this good? For delivery time prediction - yes, it's a decent result. Most fac
 ```
 ┌─────────────────┐      HTTP/REST       ┌──────────────────┐
 │   Streamlit     │ ◄──────────────────► │   FastAPI        │
-│   Dashboard     │      (httpx)         │   Backend        │
+│   Dashboard     │     (httpx)       │   Backend        │
 │   Port: 8501    │                      │   Port: 8000     │
 └─────────────────┘                      └──────────────────┘
                                                    │
@@ -37,9 +37,9 @@ Is this good? For delivery time prediction - yes, it's a decent result. Most fac
 
 ```
 ├── .github/
-│   └── workflows/
-│       ├── test.yml              # CI: pytest + coverage
-│       └── docker-build.yml      # CD: Docker multi-container build
+│   ├── workflows/
+│   │   └── main.yml              # CI/CD: pytest + Docker build
+│   └── copilot-instructions.md   # AI coding conventions
 ├── src/
 │   ├── __init__.py
 │   ├── api.py                    # FastAPI endpoints + Pydantic schemas
@@ -49,7 +49,6 @@ Is this good? For delivery time prediction - yes, it's a decent result. Most fac
 │   ├── prediction.py             # XGBoost training & evaluation
 │   └── dashboard.py              # Streamlit UI with httpx API calls
 ├── tests/
-│   ├── conftest.py               # Pytest configuration
 │   └── test_logic.py             # API endpoint tests with mocks
 ├── screenshots/
 │   ├── feature-importance.png
@@ -82,15 +81,15 @@ After several iterations, the most important features turned out to be:
 
 ### Frontend
 - **Streamlit** 1.40+ - Interactive dashboard
-- **httpx** - Async HTTP client for API communication
+- **httpx** - HTTP client for API communication
 - **Plotly** - Interactive visualizations
 - **Pandas** - Data manipulation
 
 ### Infrastructure
 - **Docker** - Multi-stage builds with non-root users
 - **Docker Compose** - Service orchestration with health checks
-- **GitHub Actions** - CI/CD pipeline
-- **Pytest** - Unit testing with mocks
+- **GitHub Actions** - CI/CD pipeline (`.github/workflows/main.yml`)
+- **Pytest** - Unit testing with unittest.mock
 
 ## API Endpoints
 
@@ -170,8 +169,8 @@ streamlit run src/dashboard.py
 ### Development
 
 ```bash
-# Run tests
-pytest tests/ -v --cov=src
+# Run tests with module import
+python -m pytest tests/ -v
 
 # Format code
 black src/ tests/
@@ -182,17 +181,19 @@ mypy src/
 
 ## CI/CD Pipeline
 
-### Continuous Integration (`.github/workflows/test.yml`)
-- ✅ Runs on every push/PR
-- ✅ Python 3.12 matrix testing
-- ✅ Pytest with coverage reporting
-- ✅ Mock Kaggle downloads to avoid rate limits
+### GitHub Actions (`.github/workflows/main.yml`)
 
-### Continuous Deployment (`.github/workflows/docker-build.yml`)
-- 🐳 Multi-stage Docker builds
-- 🔒 Security: non-root users in containers
-- 🏥 Health checks with 30s startup period
-- 📦 Docker Compose validation
+**Job 1: Quality & Tests**
+- ✅ Python 3.12 environment
+- ✅ Install dependencies + pytest
+- ✅ Run unit tests with `python -m pytest` (avoids import issues)
+
+**Job 2: Docker Build**
+- 🐳 Build API image (`Dockerfile`)
+- 🐳 Build Dashboard image (`Dockerfile.dashboard`)
+- 📦 Validates multi-container setup
+
+**Runs on**: Every push/PR to `main` or `master` branches
 
 ## FastAPI Features
 
@@ -205,21 +206,11 @@ mypy src/
 
 ## Dashboard Features
 
-- 🔮 **Delivery Simulator** - Interactive prediction with real-time API calls via httpx
+- 🔮 **Delivery Simulator** - Interactive prediction with real-time API calls
 - 🗺️ **Geographic Map** - Anomaly distribution across Brazil (Plotly)
 - 🧠 **XAI (Explainability)** - Feature importance visualization
 - 📊 **KPI Metrics** - R², MAE, business accuracy
-- ⚡ **Real-time Updates** - httpx async requests to FastAPI backend
-
-## Lessons Learned
-
-1. **Data leakage is sneaky** - it's easy to accidentally use information from the future
-2. **Removing outliers is a trade-off** - improves metrics, but will the model work on extreme cases?
-3. **Feature engineering > more data** - well-designed features give more than raw columns
-4. **41% R² is not a failure** - for some problems it's simply the ceiling given the nature of the data
-5. **FastAPI + Streamlit separation** - Backend can scale independently from UI
-6. **Docker health checks are critical** - Model initialization takes time (Kaggle downloads)
-7. **Pydantic v2 validation** - Catches bad data before it reaches the model
+- ⚡ **Real-time Updates** - Async-ready HTTP requests to FastAPI backend with httpx
 
 ## Production Considerations
 
@@ -245,7 +236,3 @@ mypy src/
 [Olist Brazilian E-Commerce](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) - public dataset with ~100k orders from 2016-2018.
 
 ---
-
-**Status**: ✅ Production Ready | 🧪 Tests Passing | 🐳 Dockerized | 🚀 CI/CD Enabled
-
-Project created as part of Data Engineering / ML portfolio.
