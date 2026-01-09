@@ -1,7 +1,44 @@
+# --- Environment and dependencies ---
 .venv/
+venv/
+env/
+bin/
+obj/
+
+# --- Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.ipynb_checkpoints/
+.mypy_cache/
+
+# --- Data
+data/
+*.csv
+*.parquet
+*.json
+*.sql
+*.zip
+*.gz
+
+# --- Notebooki 
+*.ipynb
+notebooks/
+
+# --- Git CI/CD ---
 .git/
+.gitignore
 .github/
-*.png
+
+# --- Editor and system files ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Secrets and logs ---
 .env
+*.log
+tests/

@@ -47,9 +47,25 @@ After several iterations, the most important features turned out to be:
 ### Locally
 ```bash
 pip install -r requirements.txt
-python main              # trains the model
-streamlit run src/dashboard.py  # starts dashboard
+uvicorn src.api:app --reload --port 8000  # loads data, runs isolation forest, trains XGBoost
 ```
+
+Prepare the dashboard (it assumes the FastAPI is accessible via `DELIVERY_API_URL`, default `http://localhost:8000`):
+
+```bash
+set DELIVERY_API_URL=http://localhost:8000   # on Windows
+streamlit run src/dashboard.py
+```
+
+On macOS/Linux use `export DELIVERY_API_URL=http://localhost:8000` if you prefer the dashboard to connect to a different host.
+
+The FastAPI service validates every incoming `DeliveryEstimate` payload through Pydantic, returning a guarded prediction plus MAE/R² and a small warning list when features fall outside the training distribution. Streamlit uses HTTPX to pass simulator inputs to `POST /predict` so the UI stays responsive even if the model lives in a separate process.
+
+### FastAPI interface
+
+- `POST /predict` accepts the full feature set and returns `predicted_days`, `mae`, `r2_score`, and any extreme-value warnings.
+- `GET /health` exposes readiness, total records, and the latest MAE/R² so dashboards or observability tools can verify the model is online.
+- Every request is validated by Pydantic, which protects against negative distances, out-of-range months, or malformed JSON.
 
 ### Docker
 ```bash
@@ -62,6 +78,8 @@ Dashboard will be available at `http://localhost:8501`
 ## Stack
 
 - Python 3.12
+- FastAPI + Pydantic (validated prediction API)
+- HTTPX (Streamlit ↔ FastAPI communication)
 - XGBoost (regression)
 - Scikit-learn (preprocessing, Isolation Forest)
 - Streamlit + Plotly (dashboard)

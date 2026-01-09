@@ -1,13 +1,17 @@
+import os
 import streamlit as st
+import httpx
 import pandas as pd
 import plotly.express as px
-import numpy as np
+from src.loader import get_data
+from src.processing import process_data
+from src.prediction import train_and_evaluate
+from src.model import IsolationForestModel
 
-# Imports from modules
-from loader import get_data
-from processing import process_data
-from prediction import train_and_evaluate
-from model import IsolationForestModel
+
+API_BASE_URL = os.environ.get("DELIVERY_API_URL", "http://localhost:8000")
+PREDICTION_ENDPOINT = f"{API_BASE_URL}/predict"
+PREDICTION_TIMEOUT = 10.0
 
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
@@ -34,6 +38,18 @@ st.markdown("""
     }
 </style>
 """, unsafe_allow_html=True)
+
+def call_prediction_api(payload):
+    try:
+        response = httpx.post(PREDICTION_ENDPOINT, json=payload, timeout=PREDICTION_TIMEOUT)
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        st.error(f"Prediction API error ({exc.response.status_code}): {exc.response.text}")
+        return None
+    except httpx.RequestError as exc:
+        st.error(f"Prediction API unreachable: {exc}")
+        return None
+    return response.json()
 
 # --- 2. SYSTEM LOADING (CACHE) ---
 # This executes only once when the app starts!
@@ -135,69 +151,56 @@ with tab_sim:
 
     # Action button
     if st.button("🚀 CALCULATE ESTIMATE", type="primary"):
-        # DATA PREPARATION (Must match model exactly!)
-        # Calculate derived features on the fly
-        
-        # Lat/Lng use averages, as simulator has no map to click (simplification)
-        input_data = pd.DataFrame({
-            'product_weight_g': [weight],
-            'product_vol_cm3': [vol],
-            'distance_km': [dist],
-            'customer_lat': [df['customer_lat'].mean()],
-            'customer_lng': [df['customer_lng'].mean()],
-            'seller_lat': [df['seller_lat'].mean()],
-            'seller_lng': [df['seller_lng'].mean()],
-            'payment_lag_days': [lag],
-            'is_weekend_order': [1 if is_weekend else 0],
-            'freight_value': [freight],
-            'purchase_month': [month]
-        })
+        payload = {
+            'product_weight_g': weight,
+            'product_vol_cm3': vol,
+            'distance_km': dist,
+            'customer_lat': df['customer_lat'].mean(),
+            'customer_lng': df['customer_lng'].mean(),
+            'seller_lat': df['seller_lat'].mean(),
+            'seller_lng': df['seller_lng'].mean(),
+            'payment_lag_days': lag,
+            'is_weekend_order': bool(is_weekend),
+            'freight_value': freight,
+            'purchase_month': month,
+        }
 
-        # Prediction
-        pred_days = model.predict(input_data)[0]
-        
-        # Result presentation
-        st.success(f"📦 Estimated delivery time: **{pred_days:.1f} days**")
-        
-        # EXTREME DATA WARNING
-        warnings = []
-        if dist > 3000:
-            warnings.append("very large distance (>3000 km)")
-        if dist < 10:
-            warnings.append("very small distance (<10 km)")
-        if weight > 20000:
-            warnings.append("very high weight (>20 kg)")
-        if weight < 100:
-            warnings.append("very low weight (<100 g)")
-        if freight > 500:
-            warnings.append("very high shipping price (>500 BRL)")
-        if vol > 50000:
-            warnings.append("very large volume (>50000 cm³)")
-            
-        if warnings:
-            st.warning(f"""
-            ⚠️ **Warning:** Input data contains extreme values: {', '.join(warnings)}.
-            
-            Model was trained mainly on 2017-2018 data.
-            For extreme values, estimation may be less accurate.
-            Error could be ±7-10 days instead of standard ±4 days.
-            """)
-        
-        # Timeline visualization
-        max_days = 30
-        progress = float(min(pred_days / max_days, 1.0))
-        
-        if pred_days < 5:
-            bar_color = "green"
-            msg = "⚡ Fast delivery (Express)"
-        elif pred_days < 15:
-            bar_color = "orange"
-            msg = "🚛 Standard time"
-        else:
-            bar_color = "red"
-            msg = "⚠️ Long route / Delay"
-            
-        st.progress(progress, text=msg)
+        api_response = call_prediction_api(payload)
+        if api_response:
+            pred_days = api_response.get('predicted_days')
+            warnings = api_response.get('warnings', [])
+            mae_value = api_response.get('mae')
+            message = api_response.get('message')
+
+            quality_note = f" · MAE ≃ {mae_value:.1f} days" if isinstance(mae_value, (int, float)) else ""
+            st.success(f"📦 Estimated delivery time: **{pred_days:.1f} days**{quality_note}")
+
+            if message:
+                st.caption(message)
+
+            if warnings:
+                st.warning(f"""
+                ⚠️ **Warning:** Input data contains extreme values: {', '.join(warnings)}.
+
+                Model was trained mainly on 2017-2018 data.
+                For extreme values, estimation may be less accurate.
+                Error could be ±7-10 days instead of standard ±4 days.
+                """)
+
+            max_days = 30
+            progress = float(min(pred_days / max_days, 1.0))
+
+            if pred_days < 5:
+                bar_color = "green"
+                msg = "⚡ Fast delivery (Express)"
+            elif pred_days < 15:
+                bar_color = "orange"
+                msg = "🚛 Standard time"
+            else:
+                bar_color = "red"
+                msg = "⚠️ Long route / Delay"
+
+            st.progress(progress, text=msg)
 
 
 # === TAB 2: MAP AND ANOMALIES ===
