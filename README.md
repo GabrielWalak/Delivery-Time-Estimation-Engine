@@ -74,7 +74,6 @@ After several iterations, the most important features turned out to be:
 
 ### Backend
 - **FastAPI** 0.115+ - Modern async web framework
-- **Pydantic** v2 - Request/response validation with type safety
 - **XGBoost** - Gradient boosting for regression
 - **Scikit-learn** - Preprocessing & Isolation Forest
 - **KaggleHub** - Automated dataset downloads
@@ -197,7 +196,6 @@ mypy src/
 
 ## FastAPI Features
 
-- **Pydantic v2 Validation**: All requests validated with type hints
 - **Async/Await**: Non-blocking I/O for concurrent requests
 - **OpenAPI Docs**: Auto-generated at `/docs` and `/redoc`
 - **CORS Middleware**: Configured for cross-origin requests
