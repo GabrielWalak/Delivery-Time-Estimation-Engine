@@ -38,7 +38,7 @@ Is this good? For delivery time prediction - yes, it's a decent result. Most fac
 ```
 ├── .github/
 │   ├── workflows/
-│   │   └── main.yml              # CI/CD: pytest + Docker build
+│   │   └── main.yml              # CI: pytest + Docker build
 │   └── copilot-instructions.md   # AI coding conventions
 ├── src/
 │   ├── __init__.py
@@ -87,7 +87,7 @@ After several iterations, the most important features turned out to be:
 ### Infrastructure
 - **Docker** - Multi-stage builds with non-root users
 - **Docker Compose** - Service orchestration with health checks
-- **GitHub Actions** - CI/CD pipeline (`.github/workflows/main.yml`)
+- **GitHub Actions** - Continuous Integration (pytest + Docker image validation)
 - **Pytest** - Unit testing with unittest.mock
 
 ## API Endpoints
@@ -178,21 +178,29 @@ black src/ tests/
 mypy src/
 ```
 
-## CI/CD Pipeline
+## Continuous Integration (CI)
 
 ### GitHub Actions (`.github/workflows/main.yml`)
 
-**Job 1: Quality & Tests**
-- ✅ Python 3.12 environment
-- ✅ Install dependencies + pytest
-- ✅ Run unit tests with `python -m pytest` (avoids import issues)
+The project uses a Continuous Integration (CI) pipeline that runs automatically on every push and pull request to the `main` and `master` branches.
 
-**Job 2: Docker Build**
-- 🐳 Build API image (`Dockerfile`)
-- 🐳 Build Dashboard image (`Dockerfile.dashboard`)
-- 📦 Validates multi-container setup
+**Job 1 – Quality & Tests**
 
-**Runs on**: Every push/PR to `main` or `master` branches
+- ✅ Set up Python 3.12
+- ✅ Install project dependencies
+- ✅ Run unit tests using `python -m pytest`
+
+**Job 2 – Docker Validation**
+
+- 🐳 Build FastAPI Docker image
+- 🐳 Build Streamlit Docker image
+- 📦 Validate that both production images build successfully
+
+**Current scope**
+
+- ✔ Automated testing
+- ✔ Docker image validation
+- ✖ Automatic deployment is intentionally performed manually
 
 ## FastAPI Features
 
